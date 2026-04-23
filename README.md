@@ -5,6 +5,14 @@ codebase on your machine (commit activity, cyclomatic complexity, file-type
 mix) and pushes the results to a small cloud dashboard you can hit from
 anywhere.
 
+## Screenshots
+
+![Commit activity](docs/commit_activity.png)
+![Line changes over time](docs/line_changes.png)
+![Complexity overview](docs/complexity.png)
+![High-complexity functions (radon)](docs/radon-high_complexity_functions.png)
+![Per-file commit history](docs/code_file_commit_history.png)
+
 ## Layout
 
 ```
