@@ -177,7 +177,7 @@ async def ingest_data(request: Request, x_cloud_api_key: str = Header(..., alias
     data = await request.json()
 
     # Store using same keys as fetch_dashboard_data
-    for key in ["progress", "complexity_warnings", "heatmap_data_weekly", "heatmap_data_monthly", "heatmap_data_yearly"]:
+    for key in ["progress", "complexity_warnings", "heatmap_data_weekly", "heatmap_data_monthly", "heatmap_data_yearly", "meta"]:
         if key in data:
             app.state.latest_data[key] = data[key]
             logger.info(f"✅ Stored {key}")
@@ -264,6 +264,12 @@ async def get_progress(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key
     """Returns the latest stored progress data."""
     verify_cloud_api_key(x_cloud_api_key)
     return app.state.latest_data.get("progress", {"error": "No progress data available. Please trigger retrieval from the local server."})
+
+
+@app.get("/project_info")
+async def project_info(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key")):
+    verify_cloud_api_key(x_cloud_api_key)
+    return app.state.latest_data.get("meta", {})
 
 # 🔎 API: Serve cached high-complexity function warnings (Requires CLOUD API Key)
 @app.get("/complexity_warnings")

@@ -272,12 +272,17 @@ async def build_and_push_all_data():
     heatmap_monthly = await get_heatmap_data(x_local_api_key=LOCAL_API_KEY, period="monthly")
     heatmap_yearly = await get_heatmap_data(x_local_api_key=LOCAL_API_KEY, period="yearly")
 
+    is_url = _is_git_url(REPO_PATH_raw)
     payload = {
         "progress": progress_data,
         "complexity_warnings": complexity_data,
         "heatmap_data_weekly": heatmap_weekly,
         "heatmap_data_monthly": heatmap_monthly,
         "heatmap_data_yearly": heatmap_yearly,
+        "meta": {
+            "repo": REPO_PATH_raw if is_url else Path(REPO_PATH_raw).name,
+            "is_url": is_url,
+        },
     }
 
     success = await push_metrics_to_cloud(payload)

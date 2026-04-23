@@ -401,7 +401,35 @@
         function loadAllData() {
             document.getElementById('api-status').textContent = 'Loading data...';
             showLoadingElements();
-            
+
+            // Load project info (for title/header)
+            fetch(`${apiUrl}/project_info`, {
+                method: 'GET',
+                headers: { 'x-cloud-api-key': apiKey, 'accept': 'application/json' }
+            })
+            .then(r => r.ok ? r.json() : null)
+            .then(info => {
+                if (!info || !info.repo) return;
+                const title = `localytics — ${info.repo}`;
+                document.title = title;
+                const h1 = document.querySelector('header h1');
+                if (h1) h1.textContent = title;
+                const header = document.querySelector('header');
+                const existing = header.querySelector('.project-link');
+                if (existing) existing.remove();
+                if (info.is_url) {
+                    const link = document.createElement('a');
+                    link.href = info.repo.replace(/\.git$/, '');
+                    link.textContent = link.href;
+                    link.target = '_blank';
+                    link.rel = 'noopener';
+                    link.className = 'project-link text-sm text-blue-600 hover:underline block mt-1 break-all';
+                    const tagline = header.querySelector('p');
+                    header.insertBefore(link, tagline.nextSibling);
+                }
+            })
+            .catch(err => console.error('Error loading project info:', err));
+
             // Load current progress data
             fetch(`${apiUrl}/progress`, {
                 method: 'GET',
