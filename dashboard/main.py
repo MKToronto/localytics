@@ -268,6 +268,7 @@ async def get_progress(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key
 
 @app.get("/project_info")
 async def project_info(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key")):
+    """Returns the latest stored project metadata (for page title)."""
     verify_cloud_api_key(x_cloud_api_key)
     return app.state.latest_data.get("meta", {})
 
