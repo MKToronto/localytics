@@ -53,6 +53,35 @@ localytics/
    app meant for Render (`dashboard/render.yaml`). It needs these env vars:
    `LOCAL_API_KEY`, `CLOUD_API_KEY`, `LOCAL_SERVER_PORT`, `REDIS_URL`.
 
+## Workflow: local codebase vs. GitHub repo
+
+The main use case is keeping the code on your machine — nothing leaves except
+aggregated metrics — but localytics will also analyse a public GitHub repo
+if you'd rather not keep the code locally.
+
+**Local code** — set `REPO_PATH` to an absolute path on your machine and
+`CODE_PATH` to the specific subtree to analyse (absolute path, normally
+inside `REPO_PATH`).
+
+```json
+"REPO_PATH": "/Users/you/code/myproject",
+"CODE_PATH": "/Users/you/code/myproject/src"
+```
+
+**GitHub repo** — set `REPO_PATH` to a git URL. On startup, the local server
+clones the repo into `.cache/<repo-name>/` at the root of this project
+(`git pull`ed on subsequent runs). `CODE_PATH` is a sub-path within the
+clone, same as local mode — give it relative to the clone root.
+
+```json
+"REPO_PATH": "https://github.com/tiangolo/fastapi.git",
+"CODE_PATH": "fastapi"
+```
+
+The `git pull` only happens when `local_server.py` starts. If you want the
+tree refreshed on a schedule, run the server on a schedule — use the macOS
+LaunchAgent / `.command` templates in `helpers/` (see below).
+
 ## macOS auto-start (optional)
 
 Templates live in `helpers/`. Fill them in **outside** this repo so your

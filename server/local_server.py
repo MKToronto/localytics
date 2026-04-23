@@ -1,3 +1,15 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "fastapi",
+#     "uvicorn",
+#     "gitpython",
+#     "pandas",
+#     "radon",
+#     "watchfiles",
+#     "httpx",
+# ]
+# ///
 import httpx
 import json
 import os
@@ -77,8 +89,41 @@ try:
     CLOUD_API_KEY = config.get("CLOUD_API_KEY", default_key)
     LOCAL_API_KEY = config.get("LOCAL_API_KEY", default_key)
 
-    CODE_PATH = Path(config.get("CODE_PATH", ".")).resolve()
-    REPO_PATH = Path(config.get("REPO_PATH", ".")).resolve()
+    CODE_PATH_raw = config.get("CODE_PATH", ".")
+    REPO_PATH_raw = config.get("REPO_PATH", ".")
+
+    def _is_git_url(s: str) -> bool:
+        return s.startswith(("http://", "https://", "git@")) or s.endswith(".git")
+
+    if _is_git_url(REPO_PATH_raw):
+        project_root = Path(__file__).resolve().parent.parent
+        cache_root = project_root / ".cache"
+        cache_root.mkdir(parents=True, exist_ok=True)
+        repo_name = REPO_PATH_raw.rstrip("/").rsplit("/", 1)[-1]
+        if repo_name.endswith(".git"):
+            repo_name = repo_name[:-4]
+        clone_dir = cache_root / repo_name
+        if clone_dir.exists():
+            try:
+                git.Repo(clone_dir).remotes.origin.pull()
+                print(f"Pulled latest from {REPO_PATH_raw} into {clone_dir}")
+            except Exception as e:
+                print(f"Pull failed ({e}); using existing cache at {clone_dir}")
+        else:
+            print(f"Cloning {REPO_PATH_raw} into {clone_dir}...")
+            git.Repo.clone_from(REPO_PATH_raw, clone_dir)
+            print(f"Cloned to {clone_dir}")
+        REPO_PATH = clone_dir
+        code_sub = Path(CODE_PATH_raw)
+        if CODE_PATH_raw in ("", ".") or str(code_sub) == ".":
+            CODE_PATH = clone_dir
+        elif code_sub.is_absolute():
+            CODE_PATH = code_sub.resolve()
+        else:
+            CODE_PATH = (clone_dir / code_sub).resolve()
+    else:
+        CODE_PATH = Path(CODE_PATH_raw).resolve()
+        REPO_PATH = Path(REPO_PATH_raw).resolve()
     FILE_EXTENSIONS = tuple(config.get("filters", {}).get("file_extensions", [".py"]))  # Default to .py if missing
     ALLOWED_IPS_RAW = config.get("ALLOWED_IPS", [])
 
