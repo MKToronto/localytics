@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Certs
+*.key
+*.pem
+*.crt
+
+# Logs & runtime artifacts
+*.log
+debug.log
+process.log
+progress_history.csv
+server.log
+server_error.log
+
+# macOS / editors
+.DS_Store
+.vscode/
+.idea/

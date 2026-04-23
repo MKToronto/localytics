@@ -2,6 +2,12 @@
     "folders": [
         {
             "path": "../localytics_private"
+        },
+        {
+            "path": "../localytics_dashboard"
+        },
+        {
+            "path": "../localytics_helpers"
         }
     ]
 }

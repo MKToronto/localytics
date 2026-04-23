@@ -1,0 +1,24 @@
+{
+  "LOCAL_API_KEY": "REPLACE_WITH_RANDOM_HEX",
+  "CLOUD_API_KEY": "REPLACE_WITH_RANDOM_HEX",
+
+  "CODE_PATH": "/absolute/path/to/the/code/you/want/analysed",
+  "REPO_PATH": "/absolute/path/to/the/parent/git/repo",
+
+  "filters": {
+    "file_extensions": [".py", ".sh", ".ipynb", ".yml", ".md"],
+    "include_files": [],
+    "exclude_files": [],
+    "exclude_folders": []
+  },
+
+  "ALLOWED_IPS": ["localhost", "127.0.0.1"],
+  "ALLOWED_ORIGINS": ["https://localhost"],
+
+  "CLOUD_SERVER_URL": "https://your-dashboard.example.com",
+
+  "SSL_KEYFILE": "./cert.key",
+  "SSL_CERTFILE": "./cert.pem",
+
+  "EXCLUDED_AGGREGATED_FILES": []
+}

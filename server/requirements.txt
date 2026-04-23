@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+gitpython
+pandas
+radon
+watchfiles
+httpx
