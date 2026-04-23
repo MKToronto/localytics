@@ -45,15 +45,19 @@ header at the top of `server/local_server.py`.
    starts on port `51515`. TLS is on if `SSL_KEYFILE` / `SSL_CERTFILE` in
    `config.json` point at a valid cert pair; otherwise plain HTTP.
 
+   TLS is a security measure: it encrypts the API-key headers used to
+   authenticate between the local server and the cloud dashboard, so the
+   keys can't be sniffed off the network. Plain HTTP is only safe if the
+   local server is reachable from `localhost` alone.
+
    To generate a self-signed pair for local use:
    ```bash
    openssl req -x509 -newkey rsa:4096 -nodes -sha256 -days 365 \
      -keyout cert.key -out cert.pem -subj "/CN=localhost"
    ```
-   Point `SSL_KEYFILE` / `SSL_CERTFILE` in `config.json` at the resulting
-   files (absolute paths). `*.key` / `*.pem` are gitignored so the certs
-   never commit. Browsers will warn on the self-signed cert — accept the
-   warning once for local dev.
+   The defaults in `config.example.json` (`./cert.key`, `./cert.pem`)
+   match the files produced above. `*.key` / `*.pem` are gitignored so
+   the certs never commit.
 
 3. **Deploy the cloud dashboard to Render.**
 
