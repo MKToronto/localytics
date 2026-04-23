@@ -1,69 +1,50 @@
 #!/bin/bash
+# Launch local_server.py in a detached `screen` session via `uv run`.
+# Runs cleanly from a terminal, LaunchAgent, or double-click.
+# Conda users: swap the `uv run ...` line near the bottom for your own
+# `conda activate <env> && python ...` invocation.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-exec > "$REPO_DIR/debug.log" 2>&1
-echo "Starting Localytics server in screen session at $(date)..."
-
-# Override via env vars if your conda/screen paths differ.
-CONDAROOT="${CONDAROOT:-$HOME/miniforge3}"
-CONDA_ENV="${CONDA_ENV:-localytics}"
 SCREEN_BIN="${SCREEN_BIN:-/opt/homebrew/bin/screen}"
 SCREENNAME="localytics_server"
 LOGFILE="$REPO_DIR/server.log"
 ERROR_LOG="$REPO_DIR/server_error.log"
+SERVER_PORT=51515
 
-# Ensure environment variables are set correctly
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# LaunchAgents start with a minimal PATH — make uv reachable.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 export TERM="xterm-256color"
 
-# Check if `screen` is available
-if ! command -v screen &> /dev/null && [ ! -x "$SCREEN_BIN" ]; then
-    echo "Error: screen is not installed or not in PATH" >> "$ERROR_LOG"
+exec > "$REPO_DIR/debug.log" 2>&1
+echo "Starting Localytics server at $(date)..."
+
+if ! command -v uv >/dev/null 2>&1; then
+    echo "Error: uv not found on PATH. Install from https://docs.astral.sh/uv/" >&2
+    exit 1
+fi
+if ! command -v screen >/dev/null 2>&1 && [ ! -x "$SCREEN_BIN" ]; then
+    echo "Error: screen not installed" >&2
     exit 1
 fi
 
-
-# Kill any existing screen session with the same name
-if "$SCREEN_BIN" -list | grep -q "$SCREENNAME"; then
-    echo "$(date) - Stopping existing screen session..." >> "$LOGFILE"
+# Stop any existing screen session with the same name.
+if "$SCREEN_BIN" -list 2>/dev/null | grep -q "$SCREENNAME"; then
+    echo "$(date) - Stopping existing screen session..."
     "$SCREEN_BIN" -S "$SCREENNAME" -X quit
     sleep 1
 fi
-# Define the port your Localytics server runs on
-SERVER_PORT=51515
 
-# Check if the port is in use and kill the process if necessary
+# Free the port if something's already bound.
 if lsof -i :$SERVER_PORT -t >/dev/null 2>&1; then
-    echo "$(date) - Port $SERVER_PORT is already in use. Stopping existing process..." >> "$LOGFILE"
+    echo "$(date) - Port $SERVER_PORT in use; killing existing process..."
     kill -9 $(lsof -i :$SERVER_PORT -t)
     sleep 2
 fi
 
-echo "$(date) - Starting new screen session..." >> "$LOGFILE"
-# Start a new detached screen session
-"$SCREEN_BIN" -dmS $SCREENNAME
-sleep 2  # Wait for screen to initialize
-echo "$(date) - Screen session started." >> "$LOGFILE"
-"$SCREEN_BIN" -S $SCREENNAME -X stuff "exec -l bash\n"
-sleep 1
-echo "$(date) - Bash shell started." >> "$LOGFILE"
-"$SCREEN_BIN" -S $SCREENNAME -X stuff "source $CONDAROOT/etc/profile.d/conda.sh\n"
-sleep 1
-echo "$(date) - Conda initialized." >> "$LOGFILE"
-"$SCREEN_BIN" -S $SCREENNAME -X stuff "source $CONDAROOT/etc/profile.d/mamba.sh\n"
-sleep 1
-echo "$(date) - Mamba initialized." >> "$LOGFILE"
-# Activate conda environment
-"$SCREEN_BIN" -S $SCREENNAME -X stuff "source $CONDAROOT/bin/activate $CONDA_ENV\n"
-sleep 1
-echo "$(date) - Conda environment activated." >> "$LOGFILE"
-# Log Python path
-"$SCREEN_BIN" -S $SCREENNAME -X stuff "echo 'Using Python: ' \$(which python) >> $LOGFILE\n"
-sleep 1
-echo "$(date) - Python path logged." >> "$LOGFILE"
-# Start the Localytics server
-"$SCREEN_BIN" -S $SCREENNAME -X stuff "python $SCRIPT_DIR/local_server.py & >> $LOGFILE 2>> $ERROR_LOG\n"
+echo "$(date) - Launching via uv run..."
+"$SCREEN_BIN" -dmS "$SCREENNAME" bash -c \
+    "cd '$REPO_DIR' && uv run '$SCRIPT_DIR/local_server.py' >> '$LOGFILE' 2>> '$ERROR_LOG'"
 
-echo "Screen session '$SCREENNAME' started. Use 'screen -r $SCREENNAME' to check." >> "$LOGFILE"
+echo "Screen session '$SCREENNAME' started. Attach with: screen -r $SCREENNAME"

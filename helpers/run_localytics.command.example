@@ -1,14 +1,13 @@
 #!/bin/bash
-# Double-clickable launcher for macOS. Copy to `run_localytics.command` and
-# adjust CONDA_ROOT / CONDA_ENV below to match your setup.
-
-CONDA_ROOT="${CONDA_ROOT:-$HOME/miniforge3}"
-CONDA_ENV="${CONDA_ENV:-localytics}"
+# Double-clickable macOS launcher. Copy to `run_localytics.command`,
+# chmod +x, double-click in Finder. Uses `uv run` — no venv setup needed.
+# Conda users: replace the last line with `conda activate <env> && python …`.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-source "$CONDA_ROOT/etc/profile.d/conda.sh"
-conda activate "$CONDA_ENV"
+# Finder launches with a minimal PATH — make uv reachable.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
-python "$REPO_DIR/server/local_server.py"
+cd "$REPO_DIR"
+uv run "$REPO_DIR/server/local_server.py"
