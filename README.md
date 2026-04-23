@@ -37,6 +37,16 @@ header at the top of `server/local_server.py`.
    starts on port `51515`. TLS is on if `SSL_KEYFILE` / `SSL_CERTFILE` in
    `config.json` point at a valid cert pair; otherwise plain HTTP.
 
+   To generate a self-signed pair for local use:
+   ```bash
+   openssl req -x509 -newkey rsa:4096 -nodes -sha256 -days 365 \
+     -keyout cert.key -out cert.pem -subj "/CN=localhost"
+   ```
+   Point `SSL_KEYFILE` / `SSL_CERTFILE` in `config.json` at the resulting
+   files (absolute paths). `*.key` / `*.pem` are gitignored so the certs
+   never commit. Browsers will warn on the self-signed cert — accept the
+   warning once for local dev.
+
 3. **Deploy the cloud dashboard to Render.**
 
    1. Push this repo to GitHub (public or private — Render's GitHub App can
