@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Metrics Dashboard</title>
+    <title>Localytics Code Metrics Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -47,8 +47,8 @@
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <header class="mb-10">
-            <h1 class="text-3xl font-bold text-gray-800">Code Metrics Dashboard</h1>
-            <p class="text-gray-600">Track your code quality and development progress</p>
+            <h1 class="text-3xl font-bold text-gray-800">Localytics Code Metrics Dashboard</h1>
+            <p class="text-gray-600">Track your code quality and development progress in your local repo or on the cloud</p>
             <div id="last-updated" class="text-sm text-gray-500 mt-2">Last updated: Loading...</div>
         </header>
 
@@ -402,30 +402,47 @@
             document.getElementById('api-status').textContent = 'Loading data...';
             showLoadingElements();
 
-            // Load project info (for title/header)
+            // Load project info (for header subtitle + optional URL link)
             fetch(`${apiUrl}/project_info`, {
                 method: 'GET',
                 headers: { 'x-cloud-api-key': apiKey, 'accept': 'application/json' }
             })
             .then(r => r.ok ? r.json() : null)
             .then(info => {
-                if (!info || !info.repo) return;
-                const title = `localytics — ${info.repo}`;
-                document.title = title;
-                const h1 = document.querySelector('header h1');
-                if (h1) h1.textContent = title;
                 const header = document.querySelector('header');
-                const existing = header.querySelector('.project-link');
-                if (existing) existing.remove();
+                // Clear any previous project info we injected
+                header.querySelectorAll('.project-info').forEach(e => e.remove());
+                if (!info || !info.repo) return;
+
+                // Derive a clean display name (owner/repo for URLs)
+                let name = info.repo;
+                let href = null;
                 if (info.is_url) {
+                    href = info.repo.replace(/\.git$/, '');
+                    try {
+                        let path = info.repo.startsWith('git@')
+                            ? info.repo.split(':', 2)[1] || info.repo
+                            : new URL(info.repo).pathname.replace(/^\//, '');
+                        name = path.replace(/\.git$/, '');
+                    } catch (_) { /* keep name as info.repo */ }
+                }
+
+                document.title = `Localytics Code Metrics Dashboard — ${name}`;
+
+                const tagline = header.querySelector('p');
+                const nameEl = document.createElement('div');
+                nameEl.className = 'project-info text-base font-semibold text-gray-800 mt-2';
+                nameEl.textContent = name;
+                header.insertBefore(nameEl, tagline.nextSibling);
+
+                if (href) {
                     const link = document.createElement('a');
-                    link.href = info.repo.replace(/\.git$/, '');
-                    link.textContent = link.href;
+                    link.href = href;
+                    link.textContent = href;
                     link.target = '_blank';
                     link.rel = 'noopener';
-                    link.className = 'project-link text-sm text-blue-600 hover:underline block mt-1 break-all';
-                    const tagline = header.querySelector('p');
-                    header.insertBefore(link, tagline.nextSibling);
+                    link.className = 'project-info text-sm text-blue-600 hover:underline block break-all';
+                    header.insertBefore(link, nameEl.nextSibling);
                 }
             })
             .catch(err => console.error('Error loading project info:', err));
