@@ -38,13 +38,7 @@ SERVER_PORT = 51515
 
 app = FastAPI()
 shared_state = {"should_stop": False}
-# Config lives OUTSIDE the repo so secrets never touch the working tree.
-# Override location with the LOCALYTICS_CONFIG env var; otherwise defaults to
-# ~/.config/localytics/config.json.
-CONFIG_FILE = Path(
-    os.environ.get("LOCALYTICS_CONFIG")
-    or Path.home() / ".config" / "localytics" / "config.json"
-)
+CONFIG_FILE = Path(__file__).resolve().parent.parent / "helpers" / "config.json"
 CSV_FILE = Path(__file__).resolve().parent / "progress_history.csv"
 update_metrics_finished = asyncio.Event()  # Create an event to track completion
 

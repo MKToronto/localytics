@@ -16,16 +16,13 @@ localytics/
 
 ## Quick start
 
-1. **Configure.** The server loads its config from **outside** the repo so
-   secrets never land in the working tree. Default location is
-   `~/.config/localytics/config.json`; override with the `LOCALYTICS_CONFIG`
-   env var.
+1. **Configure.** Copy the template to `helpers/config.json` and fill it in:
    ```bash
-   mkdir -p ~/.config/localytics
-   cp helpers/config.example.json ~/.config/localytics/config.json
+   cp helpers/config.example.json helpers/config.json
    ```
    At minimum set `LOCAL_API_KEY`, `CLOUD_API_KEY` (matching random hex strings
    shared with the dashboard), `CODE_PATH`, and `REPO_PATH`.
+   `helpers/config.json` is gitignored so your real keys never commit.
 
 2. **Install dependencies.** Pick one:
 

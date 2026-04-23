@@ -6,6 +6,9 @@ __pycache__/
 venv/
 env/
 
+# Real config (secrets). Ship only the .example template.
+helpers/config.json
+
 # Cloned repos (when REPO_PATH is a git URL)
 .cache/
 
