@@ -105,7 +105,7 @@ header at the top of `server/local_server.py`.
       | `CLOUD_API_KEY` | same string as in your local `helpers/config.json` |
       | `LOCAL_SERVER_PORT` | `51515` |
       | `REDIS_URL` | Internal Redis URL from step 3 |
-      | `CLOUD_READ_KEY` | *(optional)* a second hex string. If set, it grants read-only access to the dashboard endpoints — safe to share publicly for a demo without exposing write access. |
+      | `CLOUD_READ_KEY` | *(optional, only for public demos)* a second hex string, distinct from `CLOUD_API_KEY`. Grants GET-only access to dashboard endpoints. Safe to publish. |
 
    5. When the deploy log shows `Uvicorn running on …` and no tracebacks,
       open the public URL. You should see the dashboard UI with empty
