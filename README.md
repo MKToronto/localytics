@@ -10,8 +10,8 @@ anywhere.
 A demo instance is running at <https://localytics-tae6.onrender.com>
 currently analysing `tiangolo/fastapi`.
 
-Paste this read-only API key into the dashboard's key input to load the
-data:
+Open the URL, paste this read-only API key into the **API Key** field
+near the top of the dashboard, and click **Load data**:
 
 ```text
 8cdb1fa5cf9d6a275a82fc5dd8bdf40e
@@ -41,13 +41,28 @@ Python, the venv, and every dependency are fetched on demand via the PEP 723
 header at the top of `server/local_server.py`.
 
 1. **Configure.** Copy the template and fill it in:
+
    ```bash
    cp helpers/config.example.json helpers/config.json
    ```
-   At minimum set `LOCAL_API_KEY`, `CLOUD_API_KEY` (matching random hex strings
-   shared with the dashboard), `CODE_PATH`, and `REPO_PATH`.
-   `CLOUD_SERVER_URL` stays as the placeholder until step 3 is done.
-   `helpers/config.json` is gitignored so your real keys never commit.
+
+   Open `helpers/config.json` and edit the following fields:
+
+   - `LOCAL_API_KEY` and `CLOUD_API_KEY` — two random hex strings. Either
+     generate them locally with `openssl rand -hex 16` (run twice for two
+     distinct values), or let Render generate them for you when you set
+     up env vars in step 4 (click the **Generate** button next to each
+     field) and copy the values back here. Both sides must end up with
+     the same strings.
+   - `CODE_PATH` — the codebase you want analysed. Absolute path on your
+     machine, or a subpath within a cloned GitHub repo (see
+     [local vs GitHub](#workflow-local-codebase-vs-github-repo)).
+   - `REPO_PATH` — the git repo that contains `CODE_PATH`. Absolute path or
+     a `.git` URL.
+
+   Leave `CLOUD_SERVER_URL` as the placeholder for now — it gets updated
+   in step 5 once the Render dashboard is live. `helpers/config.json` is
+   gitignored so your real keys never commit.
 
 2. **Generate a TLS cert pair.** TLS is a security measure: it encrypts
    the API-key headers used to authenticate between the local server and
@@ -108,15 +123,33 @@ header at the top of `server/local_server.py`.
       | `CLOUD_READ_KEY` | *(optional, only for public demos)* a second hex string, distinct from `CLOUD_API_KEY`. Grants GET-only access to dashboard endpoints. Safe to publish. |
 
    5. When the deploy log shows `Uvicorn running on …` and no tracebacks,
-      open the public URL. You should see the dashboard UI with empty
-      placeholders — correct empty state.
+      click the public URL at the top of the Web Service's page (ends in
+      `.onrender.com`). You should see the dashboard UI with empty chart
+      placeholders — that's the correct empty state before the local
+      server starts pushing data.
 
-5. **Connect local → cloud.** Back in `helpers/config.json`:
-   ```json
-   "CLOUD_SERVER_URL": "https://your-dashboard.onrender.com"
-   ```
-   (no trailing slash). Restart `uv run server/local_server.py` — the
-   backfill runs, the push loop fires, and the Render dashboard populates.
+5. **Connect local → cloud.**
+
+   1. In Render, open your Web Service. At the top of the page, copy the
+      public URL (ends in `.onrender.com`).
+   2. Open `helpers/config.json` and replace the `CLOUD_SERVER_URL`
+      placeholder with that URL (no trailing slash):
+
+      ```json
+      "CLOUD_SERVER_URL": "https://your-service-name.onrender.com"
+      ```
+
+   3. Stop the local server if it's already running (`Ctrl-C` in its
+      terminal).
+   4. Start it again:
+
+      ```bash
+      uv run server/local_server.py
+      ```
+
+   5. In the logs you should see `📤 Pushing metrics to cloud: .../ingest`
+      followed by `✅ Successfully pushed metrics to cloud`. Reload the
+      Render dashboard URL — it now shows your data.
 
 ## Workflow: local codebase vs. GitHub repo
 
