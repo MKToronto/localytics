@@ -15,6 +15,7 @@ app = FastAPI()
 # Load API key securely from environment variables
 LOCAL_API_KEY = os.getenv("LOCAL_API_KEY")
 CLOUD_API_KEY = os.getenv("CLOUD_API_KEY")
+CLOUD_READ_KEY = os.getenv("CLOUD_READ_KEY")  # Optional read-only key; safe to publish
 # 🌐 Local server details
 # LOCAL_SERVER_URL = os.getenv("LOCAL_SERVER_URL")
 LOCAL_SERVER_PORT = os.getenv("LOCAL_SERVER_PORT")
@@ -104,11 +105,20 @@ async def health_check():
     return {"status": "ok"}
 # 🔐 API Key Verification
 def verify_cloud_api_key(x_cloud_api_key: str):
-    
-    """Verify that the provided Cloud API key matches the expected value."""
+    """Verify that the provided key matches the full-access Cloud API key (writes)."""
     if x_cloud_api_key != CLOUD_API_KEY:
         logger.warning("❌ Unauthorized attempt with an invalid CLOUD API Key")
         raise HTTPException(status_code=403, detail="Invalid CLOUD API Key")
+
+
+def verify_cloud_read_key(x_cloud_api_key: str):
+    """Verify that the provided key matches either the full or the read-only Cloud API key."""
+    if x_cloud_api_key == CLOUD_API_KEY:
+        return
+    if CLOUD_READ_KEY and x_cloud_api_key == CLOUD_READ_KEY:
+        return
+    logger.warning("❌ Unauthorized read attempt with an invalid CLOUD API Key")
+    raise HTTPException(status_code=403, detail="Invalid CLOUD API Key")
 
 
 # # 🔄 API: Local server requests data retrieval
@@ -258,32 +268,32 @@ async def fetch_dashboard_data(local_server_url):
 
     save_cached_data()
     
-# 📊 API: Serve cached progress data (Requires CLOUD API Key)
+# 📊 API: Serve cached progress data (Requires a read or full CLOUD API Key)
 @app.get("/progress")
 async def get_progress(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key")):
     """Returns the latest stored progress data."""
-    verify_cloud_api_key(x_cloud_api_key)
+    verify_cloud_read_key(x_cloud_api_key)
     return app.state.latest_data.get("progress", {"error": "No progress data available. Please trigger retrieval from the local server."})
 
 
 @app.get("/project_info")
 async def project_info(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key")):
     """Returns the latest stored project metadata (for page title)."""
-    verify_cloud_api_key(x_cloud_api_key)
+    verify_cloud_read_key(x_cloud_api_key)
     return app.state.latest_data.get("meta", {})
 
-# 🔎 API: Serve cached high-complexity function warnings (Requires CLOUD API Key)
+# 🔎 API: Serve cached high-complexity function warnings (Requires a read or full CLOUD API Key)
 @app.get("/complexity_warnings")
 async def get_complexity_warnings(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key")):
     """Returns the latest stored high-complexity function data."""
-    verify_cloud_api_key(x_cloud_api_key)
+    verify_cloud_read_key(x_cloud_api_key)
     return app.state.latest_data.get("complexity_warnings", {"error": "No complexity warnings available. Please trigger retrieval from the local server."})
 
-# 🔥 API: Serve cached heatmap data (Requires CLOUD API Key)
+# 🔥 API: Serve cached heatmap data (Requires a read or full CLOUD API Key)
 @app.get("/heatmap/data")
 async def get_heatmap_data(x_cloud_api_key: str = Header(..., alias="x-cloud-api-key"), period: str = "monthly"):
     """Returns the latest stored heatmap data."""
-    verify_cloud_api_key(x_cloud_api_key)
+    verify_cloud_read_key(x_cloud_api_key)
     if period == "monthly":
         return app.state.latest_data.get("heatmap_data_monthly",{"error": f"No heatmap data available for {period}."})
     elif period == "yearly":

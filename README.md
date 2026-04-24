@@ -5,6 +5,18 @@ codebase on your machine (commit activity, cyclomatic complexity, file-type
 mix) and pushes the results to a small cloud dashboard you can hit from
 anywhere.
 
+## Live demo
+
+A demo instance is running at <https://localytics-tae6.onrender.com>
+currently analysing `tiangolo/fastapi`.
+
+Paste this read-only API key into the dashboard's key input to load the
+data:
+
+```text
+8cdb1fa5cf9d6a275a82fc5dd8bdf40e
+```
+
 ## Screenshots
 
 ![Commit activity](docs/commit_activity.png)
@@ -37,39 +49,44 @@ header at the top of `server/local_server.py`.
    `CLOUD_SERVER_URL` stays as the placeholder until step 3 is done.
    `helpers/config.json` is gitignored so your real keys never commit.
 
-2. **Run the local server:**
-   ```bash
-   uv run server/local_server.py
-   ```
-   First run downloads Python 3.12 + deps into uv's cache (~30–60s), then
-   starts on port `51515`. TLS is on if `SSL_KEYFILE` / `SSL_CERTFILE` in
-   `config.json` point at a valid cert pair; otherwise plain HTTP.
+2. **Generate a TLS cert pair.** TLS is a security measure: it encrypts
+   the API-key headers used to authenticate between the local server and
+   the cloud dashboard, so the keys can't be sniffed off the network.
+   Plain HTTP is only safe if the local server is reachable from
+   `localhost` alone.
 
-   TLS is a security measure: it encrypts the API-key headers used to
-   authenticate between the local server and the cloud dashboard, so the
-   keys can't be sniffed off the network. Plain HTTP is only safe if the
-   local server is reachable from `localhost` alone.
-
-   To generate a self-signed pair for local use:
    ```bash
    openssl req -x509 -newkey rsa:4096 -nodes -sha256 -days 365 \
      -keyout cert.key -out cert.pem -subj "/CN=localhost"
    ```
+
    The defaults in `config.example.json` (`./cert.key`, `./cert.pem`)
    match the files produced above. `*.key` / `*.pem` are gitignored so
    the certs never commit.
 
-3. **Deploy the cloud dashboard to Render.**
+3. **Run the local server:**
+   ```bash
+   uv run server/local_server.py
+   ```
+   First run downloads Python 3.12 + deps into uv's cache (~30–60s), then
+   starts on port `51515`. TLS is on if `SSL_KEYFILE` / `SSL_CERTFILE`
+   point at a valid cert pair; otherwise plain HTTP.
+
+4. **Deploy the cloud dashboard to Render.** Two Render services are
+   needed: a Key Value (Redis) store for caching, and a Web Service for
+   the dashboard itself. Put them both in the same region — the Key
+   Value's Internal URL only resolves to services in the same region.
 
    1. Push this repo to GitHub (public or private — Render's GitHub App can
       read private repos you grant it access to).
    2. Sign up at https://render.com and connect your GitHub repo. (Or use
       Render's "Public Git repository" option — no GitHub App needed, but
       you lose auto-deploy on push.)
-   3. **Render → + New → Key Value.** Name it, pick a region, Free plan.
-      Once provisioned, open the service, copy the **Internal Redis URL**
-      (starts with `redis://red-…`).
-   4. **Render → + New → Web Service.** Pick the `localytics` repo, then:
+   3. **Service 1 — Render → + New → Key Value.** Name it, pick a region,
+      Free plan. Once provisioned, open the service and copy the
+      **Internal Redis URL** (starts with `redis://red-…`).
+   4. **Service 2 — Render → + New → Web Service.** Pick the `localytics`
+      repo, **same region as Service 1**, then:
 
       | Field | Value |
       |---|---|
@@ -77,6 +94,7 @@ header at the top of `server/local_server.py`.
       | Runtime | Python 3 |
       | Build Command | `pip install -r requirements.txt` |
       | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
+      | Health Check Path | `/health_check` |
       | Plan | Free |
 
       Under **Environment Variables** add four entries:
@@ -86,13 +104,14 @@ header at the top of `server/local_server.py`.
       | `LOCAL_API_KEY` | same string as in your local `helpers/config.json` |
       | `CLOUD_API_KEY` | same string as in your local `helpers/config.json` |
       | `LOCAL_SERVER_PORT` | `51515` |
-      | `REDIS_URL` | Internal Redis URL from step 3.3 |
+      | `REDIS_URL` | Internal Redis URL from step 3 |
+      | `CLOUD_READ_KEY` | *(optional)* a second hex string. If set, it grants read-only access to the dashboard endpoints — safe to share publicly for a demo without exposing write access. |
 
    5. When the deploy log shows `Uvicorn running on …` and no tracebacks,
       open the public URL. You should see the dashboard UI with empty
       placeholders — correct empty state.
 
-4. **Connect local → cloud.** Back in `helpers/config.json`:
+5. **Connect local → cloud.** Back in `helpers/config.json`:
    ```json
    "CLOUD_SERVER_URL": "https://your-dashboard.onrender.com"
    ```
