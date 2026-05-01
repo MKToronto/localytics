@@ -7,11 +7,13 @@ anywhere.
 
 ## Live demo
 
-A demo instance is running at <https://localytics-tae6.onrender.com>
-currently analysing `tiangolo/fastapi`.
+A demo instance is running at <https://localytics-tae6.onrender.com/?key=8cdb1fa5cf9d6a275a82fc5dd8bdf40e>
+currently analysing `tiangolo/fastapi`. The read-only API key is embedded in
+the URL so the dashboard loads automatically with no copy-paste step.
 
-Open the URL, paste this read-only API key into the **API Key** field
-near the top of the dashboard, and click **Load data**:
+If you'd rather paste the key by hand, open <https://localytics-tae6.onrender.com>
+and enter this read-only key into the **API Key** field at the top of the
+dashboard, then click **Load data**:
 
 ```text
 8cdb1fa5cf9d6a275a82fc5dd8bdf40e
