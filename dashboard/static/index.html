@@ -289,6 +289,16 @@
             // Always prompt for API key
             document.getElementById('api-status').textContent = 'Please enter your API key to load data';
             hideLoadingElements();
+
+            // ADDED: handle ?key= URL parameter (one-click public demo links)
+            const urlKey = new URLSearchParams(window.location.search).get('key');
+            if (urlKey) {
+                apiKey = urlKey;
+                apiKeyInput.value = urlKey;
+                localStorage.setItem(LS_KEY, urlKey);
+                document.getElementById('api-status').textContent = 'Using API key from URL — loading data...';
+                loadAllData();
+            }
         });
         
         // Set active period button
