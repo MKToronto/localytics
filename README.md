@@ -180,7 +180,9 @@ clone, same as local mode — give it relative to the clone root.
 
 The `git pull` only happens when `local_server.py` starts. If you want the
 tree refreshed on a schedule, run the server on a schedule — use the macOS
-LaunchAgent / `.command` templates in `helpers/` (see below).
+LaunchAgent / `.command` templates in `helpers/` (see below). Or, for a
+hands-off public demo that needs no machine at all, run it in the cloud — see
+[Cloud auto-refresh (GitHub Actions)](#cloud-auto-refresh-github-actions).
 
 ## macOS auto-start (optional)
 
@@ -207,6 +209,31 @@ cp helpers/com.localytics.server.plist.example ~/Library/LaunchAgents/com.localy
 # edit the plist to point at the absolute path of this repo, then:
 launchctl load ~/Library/LaunchAgents/com.localytics.server.plist
 ```
+
+## Cloud auto-refresh (GitHub Actions)
+
+For a public-repo demo you can keep the dashboard current with no machine
+involved at all. The workflow at `.github/workflows/refresh.yml` runs the
+existing `server/local_server.py` on a GitHub-hosted runner — it clones/pulls
+the target repo, computes the metrics, pushes them to the dashboard, then
+exits. Nothing in the app changes; the workflow just supplies a config and a
+throwaway TLS cert at runtime.
+
+It runs daily and **only re-scans when the target repo has a new commit**
+(a cheap `git ls-remote` check, skipped otherwise). You can also trigger it
+any time from the repo's **Actions → Refresh demo dashboard → Run workflow**.
+
+Two repository secrets are required (**Settings → Secrets and variables →
+Actions**); the workflow file itself holds no key values:
+
+| Secret | Purpose |
+|---|---|
+| `CLOUD_API_KEY` | dashboard write key — pushes metrics to `/ingest` |
+| `CLOUD_READ_KEY` | dashboard read key — used to verify the dashboard updated |
+
+`LOCAL_API_KEY` isn't needed as a secret: the push flow authenticates only
+with `CLOUD_API_KEY`, so the workflow generates a throwaway `LOCAL_API_KEY` at
+runtime purely to satisfy the scanner's config.
 
 ## License
 
