@@ -1,0 +1,120 @@
+name: Refresh demo dashboard
+
+# Keeps the public FastAPI demo (https://localytics-tae6.onrender.com) current
+# without your laptop. It runs YOUR existing scanner (server/local_server.py)
+# unchanged on a GitHub runner: the workflow only hands it a config + a throwaway
+# TLS cert, then runs it. No scanning logic is duplicated here.
+#
+# The scanner clones/pulls FastAPI, computes the metrics, pushes them to the
+# dashboard's /ingest, then self-exits.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   CLOUD_API_KEY   = the tae6 dashboard's write key  (used to push metrics)
+#   CLOUD_READ_KEY  = the tae6 dashboard's read key   (used to verify the update)
+
+on:
+  schedule:
+    - cron: '23 6 * * *'   # daily ~06:23 UTC
+  workflow_dispatch:        # manual "Run workflow" button
+
+concurrency:
+  group: refresh-demo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve FastAPI HEAD commit
+        id: head
+        run: echo "sha=$(git ls-remote https://github.com/tiangolo/fastapi.git HEAD | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if this commit was already scanned
+        id: seen
+        uses: actions/cache@v4
+        with:
+          path: .last_sha
+          key: fastapi-scanned-${{ steps.head.outputs.sha }}
+
+      - name: Decide whether to run
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ steps.seen.outputs.cache-hit }}" != "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No new FastAPI commit (${{ steps.head.outputs.sha }}); nothing to do."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install lsof
+        if: steps.decide.outputs.run == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lsof
+
+      - name: Install uv
+        if: steps.decide.outputs.run == 'true'
+        uses: astral-sh/setup-uv@v5
+
+      - name: Force localhost to IPv4 (the scanner's readiness check hits https://localhost)
+        if: steps.decide.outputs.run == 'true'
+        run: sudo sed -i '/^::1.*localhost/s/localhost//g' /etc/hosts
+
+      - name: Self-signed cert (so the scanner serves TLS for its own localhost check)
+        if: steps.decide.outputs.run == 'true'
+        run: >
+          openssl req -x509 -newkey rsa:2048 -nodes -days 5 -subj "/CN=localhost"
+          -keyout "$GITHUB_WORKSPACE/cert.key" -out "$GITHUB_WORKSPACE/cert.pem"
+
+      - name: Write config (secret injected at runtime, never committed)
+        if: steps.decide.outputs.run == 'true'
+        env:
+          CLOUD_API_KEY: ${{ secrets.CLOUD_API_KEY }}
+        run: |
+          mkdir -p helpers
+          cat > helpers/config.json <<EOF
+          {
+            "LOCAL_API_KEY": "$(openssl rand -hex 16)",
+            "CLOUD_API_KEY": "${CLOUD_API_KEY}",
+            "REPO_PATH": "https://github.com/tiangolo/fastapi.git",
+            "CODE_PATH": "fastapi",
+            "filters": { "file_extensions": [".py", ".sh", ".ipynb", ".yml"], "include_files": [], "exclude_files": [], "exclude_folders": [] },
+            "ALLOWED_IPS": ["localhost", "127.0.0.1", "::1"],
+            "ALLOWED_ORIGINS": ["https://localhost"],
+            "CLOUD_SERVER_URL": "https://localytics-tae6.onrender.com",
+            "SSL_KEYFILE": "${GITHUB_WORKSPACE}/cert.key",
+            "SSL_CERTFILE": "${GITHUB_WORKSPACE}/cert.pem",
+            "EXCLUDED_AGGREGATED_FILES": []
+          }
+          EOF
+
+      - name: Run the scanner (scans FastAPI, pushes to the live dashboard, self-exits)
+        if: steps.decide.outputs.run == 'true'
+        run: |
+          # local_server.py self-terminates (kill -9) after one successful push,
+          # so a non-zero exit here is expected. The verify step below is the real check.
+          timeout 1400 uv run server/local_server.py || true
+
+      - name: Verify the live dashboard updated today
+        if: steps.decide.outputs.run == 'true'
+        env:
+          CLOUD_READ_KEY: ${{ secrets.CLOUD_READ_KEY }}
+        run: |
+          TS=$(curl -s --max-time 120 \
+                 -H "x-cloud-api-key: ${CLOUD_READ_KEY}" \
+                 https://localytics-tae6.onrender.com/progress \
+               | python3 -c "import sys,json;print(json.load(sys.stdin).get('timestamp',''))")
+          echo "Live dashboard timestamp now: $TS"
+          TODAY=$(date -u +%Y-%m-%d)
+          case "$TS" in
+            "$TODAY"*) echo "✅ Dashboard updated today." ;;
+            *) echo "::error::Dashboard did not update (timestamp=$TS, expected ${TODAY}*)"; exit 1 ;;
+          esac
+
+      - name: Record scanned commit (marks this SHA done so it isn't re-scanned)
+        if: steps.decide.outputs.run == 'true'
+        run: echo "${{ steps.head.outputs.sha }}" > .last_sha
